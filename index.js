@@ -4,7 +4,7 @@ const app = express()
 app.use(express.json())
 
 
-const persons = [
+let persons = [
     { 
         "id": "1",
         "name": "Arto Hellas", 
@@ -26,6 +26,14 @@ const persons = [
         "number": "39-23-6423122"
       }
 ]
+
+const generatedId = (existingId) => {
+    const id = Math.floor(Math.random() * 1000) + 1
+    if(id === existingId) {
+        return generatedId(existingId)  //recursive call
+    }
+    return id
+}
 
 app.get('/', (request,response) => {
     response.send('<h1>Hello world</>')
@@ -63,6 +71,45 @@ app.get('/api/persons/:id', (request,response) => {
         response.status(404).end()
     }
     
+})
+
+app.post('/api/persons', (request,response) => {
+
+    const {name, number} = request.body
+    if(!name || !number){
+        return response.status(404).json({error : 'Fill everything'})
+    }
+
+    const existingId = persons.map(p => p.id)
+    const id = generatedId(existingId)
+
+    const person = {
+        name : name,
+        number : number,
+        id : id
+    }
+    const existingName = persons.some(p => p.name === name)
+    const existingNumber = persons.some(p => p.number === number)
+
+    const message =  existingName ? "Name already exist" : "Number is saved"
+
+    if(existingName || existingNumber) {
+        return response.status(404).json({
+            error : `${message}`
+        })
+    }
+
+    persons = persons.concat(person)
+    console.log(person)
+    response.json(person)
+})
+
+app.delete('/api/persons/:id', (request,response) => {
+    const id = request.params.id
+    persons = persons.filter(person => person.id !== id)
+
+
+    response.status(204).end()
 })
 
 const PORT = 3001
