@@ -43,6 +43,7 @@ let persons = [
 ]
 
 app.use(cors())
+app.use(express.static('dist'))
 
 const generatedId = (existingId) => {
     const id = Math.floor(Math.random() * 1000) + 1
