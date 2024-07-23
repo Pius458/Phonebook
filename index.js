@@ -1,6 +1,9 @@
 const express = require('express')
-var morgan = require('morgan')
+let morgan = require('morgan')
+const cors = require('cors')
 const app = express()
+
+
 
 app.use(express.json())
 
@@ -38,6 +41,8 @@ let persons = [
         "number": "39-23-6423122"
       }
 ]
+
+app.use(cors())
 
 const generatedId = (existingId) => {
     const id = Math.floor(Math.random() * 1000) + 1
@@ -124,7 +129,7 @@ app.delete('/api/persons/:id', (request,response) => {
     response.status(204).end()
 })
 
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
     console.log(`App running on Port ${PORT}`)
 })
