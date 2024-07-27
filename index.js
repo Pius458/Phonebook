@@ -1,9 +1,8 @@
 const express = require('express')
 let morgan = require('morgan')
 const cors = require('cors')
+const Person = require('./models/person')
 const app = express()
-
-
 
 app.use(express.json())
 
@@ -45,13 +44,13 @@ let persons = [
 app.use(cors())
 app.use(express.static('dist'))
 
-const generatedId = (existingId) => {
+/*const generatedId = (existingId) => {
     const id = Math.floor(Math.random() * 1000) + 1
     if(id === existingId) {
         return generatedId(existingId)  //recursive call
     }
     return id
-}
+}*/
 
 app.get('/', (request,response) => {
     response.send('<h1>Hello world</>')
@@ -72,22 +71,23 @@ app.get('/info', (request,response) => {
             `${day} ${month} ${date} ${year} ${time} UTC +3 (East African Time)`
         )
     }
-    response.send(`Phonebook has info for ${persons.length} people <br/> ${DateDisplay()}`)
+
+    Person.find({}).then(person => {
+        response.send(`Phonebook has info for ${person.length} people <br/> ${DateDisplay()}`)
+    })
+    
 })
 
 app.get('/api/persons', (request,response) => {
-    response.json(persons)
+    Person.find({}).then(person => {
+        response.json(person)
+    })
 })
 
 app.get('/api/persons/:id', (request,response) => {
-    const id = request.params.id
-    const person = persons.find(p => p.id === id)
-    
-    if(person){
+    Person.findById(request.params.id).then(person => {
         response.json(person)
-    }else{
-        response.status(404).end()
-    }
+    })
     
 })
 
@@ -98,14 +98,13 @@ app.post('/api/persons', (request,response) => {
         return response.status(404).json({error : 'Fill everything'})
     }
 
-    const existingId = persons.map(p => p.id)
-    const id = generatedId(existingId)
+   // const existingId = persons.map(p => p.id)
+    //const id = generatedId(existingId)
 
-    const person = {
+    const person = new Person({
         name : name,
-        number : number,
-        id : id
-    }
+        number : number
+    })
     const existingName = persons.some(p => p.name === name)
     const existingNumber = persons.some(p => p.number === number)
 
@@ -117,20 +116,47 @@ app.post('/api/persons', (request,response) => {
         })
     }
 
-    persons = persons.concat(person)
-    console.log(person)
-    response.json(person)
+    person.save().then(savedPerson => {
+        response.json(savedPerson)
+    })
+    
 })
 
-app.delete('/api/persons/:id', (request,response) => {
-    const id = request.params.id
-    persons = persons.filter(person => person.id !== id)
+app.put('/api/persons/:id', (request,response,next) => {
+    const {name, number} = request.body
 
+    const person = {
+        name : name,
+        number : number
+    }
 
-    response.status(204).end()
+    Person.findByIdAndUpdate(request.params.id, person , {new: true})
+           .then(updatedPerson => {
+            response.json(updatedPerson)
+           })
+           .catch(error => next(error))
 })
 
-const PORT = process.env.PORT || 3001
+app.delete('/api/persons/:id', (request,response,next) => {
+    Person.findByIdAndDelete(request.params.id)
+          .then(person => {
+            response.status(204).end()
+          })
+          .catch(error => next(error))
+})
+
+const errorHandler = (error,request,response,next) => {
+    console.error(error.message)
+
+    if(error.name === 'CastError') {
+        return response.status(404).send('malformed id')
+    }
+
+    next(error)
+}
+app.use(errorHandler)
+
+const PORT = process.env.PORT
 app.listen(PORT, () => {
     console.log(`App running on Port ${PORT}`)
 })
